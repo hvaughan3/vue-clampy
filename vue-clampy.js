@@ -6,8 +6,6 @@
 
 var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
-
-
 function unwrapExports (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
 }
@@ -47,6 +45,7 @@ var ClampResponse = /** @class */ (function () {
  */
 function clamp(element, options) {
     var win = window;
+
     if (!options) {
         options = {
             clamp: "auto",
@@ -54,12 +53,17 @@ function clamp(element, options) {
             splitOnChars: [".", "-", "–", "—", " "]
         };
     }
+
     var opt = {
         clamp: options.clamp || "auto",
-        splitOnChars: options.splitOnChars || [".", "-", "–", "—", " "],
-        truncationChar: options.truncationChar || "…",
-        truncationHTML: options.truncationHTML
+        splitOnChars: options.splitOnChars || defaultSplitOnChars,
+        truncationChar: options.truncationChar || defaultTruncationChar,
+        truncationHTML: options.truncationHTML || defaultTruncationHtml,
+        alwaysDisplayTruncationHtml: options.alwaysDisplayTruncationHtml || defaultAlwaysDisplayTruncationHtml,
+        showTruncationHtmlLeft: (options.showTruncationHtmlLeft === null || options.showTruncationHtmlLeft === undefined) ? defaultShowTruncationHtmlLeft : options.showTruncationHtmlLeft,
+        breakOnWord: (options.breakOnWord === null || options.breakOnWord === undefined) ? defaultBreakOnWord : options.breakOnWord,
     };
+
     var splitOnChars = opt.splitOnChars.slice(0);
     var splitChar = splitOnChars[0];
     var chunks;
@@ -69,10 +73,12 @@ function clamp(element, options) {
     var clampValue = opt.clamp;
     var isCSSValue = clampValue.indexOf && (clampValue.indexOf("px") > -1 || clampValue.indexOf("em") > -1);
     var truncationHTMLContainer;
+
     if (opt.truncationHTML) {
         truncationHTMLContainer = document.createElement("span");
         truncationHTMLContainer.innerHTML = opt.truncationHTML;
     }
+
     // UTILITY FUNCTIONS __________________________________________________________
     /**
      * Return the current style for an element.
@@ -90,6 +96,7 @@ function clamp(element, options) {
     function getMaxLines(height) {
         var availHeight = height || element.clientHeight;
         var lineHeight = getLineHeight(element);
+
         return Math.max(Math.floor(availHeight / lineHeight), 0);
     }
     /**
@@ -105,11 +112,13 @@ function clamp(element, options) {
      */
     function getLineHeight(elem) {
         var lh = computeStyle(elem, "line-height");
+
         if (lh === "normal") {
             // Normal line heights vary from browser to browser. The spec recommends
             // a value between 1.0 and 1.2 of the font size. Using 1.1 to split the diff.
             lh = parseFloat(parseFloat(computeStyle(elem, "font-size")).toFixed(0)) * 1.1;
         }
+
         return parseFloat(parseFloat(lh).toFixed(0));
     }
     /**
@@ -121,6 +130,7 @@ function clamp(element, options) {
         // It also doesn't impact clamping when the browser zoom level is 100%.
         return Math.max(elem.scrollHeight, elem.clientHeight) - 4;
     }
+
     /**
      * Gets an element's last child. That may be another node or a node's contents.
      */
@@ -128,21 +138,18 @@ function clamp(element, options) {
         if (!elem.lastChild) {
             return;
         }
+
         // Current element has children, need to go deeper and get last child as a text node
         if (elem.lastChild.children && elem.lastChild.children.length > 0) {
             return getLastChild(Array.prototype.slice.call(elem.children).pop());
-        }
-        // This is the absolute last child, a text node, but something's wrong with it. Remove it and keep trying
-        else if (!elem.lastChild ||
-            !elem.lastChild.nodeValue ||
-            elem.lastChild.nodeValue === "" ||
-            elem.lastChild.nodeValue === opt.truncationChar) {
+        } else if (!elem.lastChild || !elem.lastChild.nodeValue || elem.lastChild.nodeValue === "" || elem.lastChild.nodeValue === opt.truncationChar) {    // This is the absolute last child, a text node, but something's wrong with it. Remove it and keep trying
             if (!elem.lastChild.nodeValue) {
                 // Check for void/empty element (such as <br> tag) or if it's the ellipsis and remove it.
                 if ((elem.lastChild.firstChild === null ||
                     elem.lastChild.firstChild.nodeValue === opt.truncationChar) &&
                     elem.lastChild.parentNode) {
                     elem.lastChild.parentNode.removeChild(elem.lastChild);
+
                     // Check if the element has no more children and remove it if it's the case.
                     // This can happen for instance with lists (i.e. <ul> and <ol>) with no items.
                     if ((!elem.children || elem.children.length === 0) && elem.parentNode) {
@@ -150,26 +157,25 @@ function clamp(element, options) {
                         return getLastChild(element);
                     }
                 }
+
                 // Check if it's a text node
                 if (elem.lastChild.nodeType === 3) {
                     return elem.lastChild;
-                }
-                else {
+                } else {
                     return getLastChild(elem.lastChild);
                 }
             }
+
             if (elem.lastChild &&
                 elem.lastChild.parentNode &&
                 elem.lastChild.nodeValue === opt.truncationChar) {
                 elem.lastChild.parentNode.removeChild(elem.lastChild);
-            }
-            else {
+            } else {
                 return elem;
             }
+
             return getLastChild(element);
-        }
-        // This is the last child we want, return it
-        else {
+        } else {    // This is the last child we want, return it
             return elem.lastChild;
         }
     }
@@ -195,20 +201,24 @@ function clamp(element, options) {
             chunks = null;
             lastChunk = null;
         }
+
         if (!target || !maxHeight || !target.nodeValue) {
             return;
         }
+
         var nodeValue = target.nodeValue.replace(opt.truncationChar, "");
+
         // Grab the next chunks
         if (!chunks) {
             // If there are more characters to try, grab the next one
             if (splitOnChars.length > 0) {
                 splitChar = splitOnChars.shift();
             }
-            else {
-                // No characters to chunk by. Go character-by-character
-                splitChar = "";
-            }
+            // else {
+            //     // No characters to chunk by. Go character-by-character
+            //     splitChar = "";
+            // }
+
             chunks = nodeValue.split(splitChar);
         }
         // If there are chunks left to remove, remove the last one and see if
@@ -216,23 +226,28 @@ function clamp(element, options) {
         if (chunks.length > 1) {
             lastChunk = chunks.pop();
             applyEllipsis(target, chunks.join(splitChar));
-        }
-        else {
+        } else {
             // No more chunks can be removed using this character
             chunks = null;
         }
+
         // Insert the custom HTML before the truncation character
         if (truncationHTMLContainer) {
             target.nodeValue = target.nodeValue.replace(opt.truncationChar, "");
-            element.innerHTML =
-                target.nodeValue + " " + truncationHTMLContainer.innerHTML + opt.truncationChar;
+
+            if (opt.showTruncationHtmlLeft) {
+              element.innerHTML = target.nodeValue.trim() + truncationHTMLContainer.innerHTML + opt.truncationChar;
+            } else {
+              element.innerHTML = target.nodeValue.trim() + opt.truncationChar + truncationHTMLContainer.innerHTML;
+            }
         }
+
         // Search produced valid chunks
         if (chunks) {
             // It fits
             if (element.clientHeight <= maxHeight) {
                 // There's still more characters to try splitting on, not quite done yet
-                if (splitOnChars.length >= 0 && splitChar !== "") {
+                if (splitOnChars.length >= 0 && splitChar !== "" && !(splitChar === " " && opt.breakOnWord === true)) {
                     applyEllipsis(target, chunks.join(splitChar) + splitChar + lastChunk);
                     chunks = null;
                 }
@@ -254,18 +269,24 @@ function clamp(element, options) {
         }
         return truncate(target, maxHeight);
     }
+
     // CONSTRUCTOR ________________________________________________________________
     if (clampValue === "auto") {
         clampValue = getMaxLines().toString();
-    }
-    else if (isCSSValue) {
+    } else if (isCSSValue) {
         clampValue = getMaxLines(parseInt(clampValue, 10)).toString();
     }
+
     var clampedText;
     var height = getMaxHeight(Number(clampValue));
+
     if (height < getElemHeight(element)) {
-        clampedText = truncate(getLastChild(element), height);
+        var child = getLastChild(element)
+        clampedText = truncate(child, height);
+    } else if (opt.alwaysDisplayTruncationHtml) {  // If we get here, the text does not need to be truncated, but we still want to add the link if alwaysDisplayTruncationHtml is true
+        element.innerHTML = originalText.trim() + truncationHTMLContainer.innerHTML;
     }
+
     return new ClampResponse(originalText, clampedText);
 }
 
@@ -310,6 +331,15 @@ var _extends = Object.assign || function (target) {
   return target;
 };
 
+var defaultClamp = 'auto'
+
+var defaultTruncationChar = '…'
+var defaultTruncationHtml = ''
+var defaultSplitOnChars = [".", "-", "–", "—", " ", ""]
+var defaultAlwaysDisplayTruncationHtml = false
+var defaultShowTruncationHtmlLeft = true
+var defaultBreakOnWord = false
+
 var defaults = {
   clamp: 'auto',
   truncationChar: '…',
@@ -343,7 +373,15 @@ function clampElement(el, clamp) {
     el.innerHTML = el.clampInitialContent;
   }
 
-  defaults = _extends({}, defaults, { clamp: clamp ? clamp : 'auto' });
+  defaults = _extends({}, defaults, { 
+    clamp: clamp.lines ? clamp.lines : 'auto',
+    truncationChar: clamp.truncateChar || defaultTruncationChar,
+    truncationHTML: clamp.truncateHtml || defaultTruncationHtml,
+    splitOnChars: clamp.splitOnChars || defaultSplitOnChars,
+    alwaysDisplayTruncationHtml: clamp.alwaysDisplayTruncationHtml || defaultAlwaysDisplayTruncationHtml,
+    showTruncationHtmlLeft: (clamp.showTruncationHtmlLeft === null || clamp.showTruncationHtmlLeft === undefined) ? defaultShowTruncationHtmlLeft : clamp.showTruncationHtmlLeft,
+    breakOnWord: (clamp.breakOnWord === null || clamp.breakOnWord === undefined) ? defaultBreakOnWord : clamp.breakOnWord,
+  });
 
   // Set the opactity to 0 to avoid content to flick when clamping.
   el.style.opacity = '0';
